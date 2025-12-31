@@ -21,7 +21,20 @@ const viewportCenter = cameraCenter - Vec3{ 0, 0, focalLength };
 const viewportUpperLeft = viewportCenter - (viewportU / vec.splat(2)) - (viewportV / vec.splat(2));
 const pixel00Location = viewportUpperLeft + vec.splat(0.5) * (pixelDeltaU + pixelDeltaV);
 
+fn hitSphere(center: Vec3, radius: f32, ray: Ray) bool {
+    const oc: Vec3 = center - ray.origin;
+    const a = vec.dot(ray.direction, ray.direction);
+    const b = -2.0 * vec.dot(ray.direction, oc);
+    const c = vec.dot(oc, oc) - radius * radius;
+    const discriminant = b * b - 4.0 * a * c;
+    return discriminant >= 0.0;
+}
+
 fn ray_color(r: Ray) Vec3 {
+    if (hitSphere(Vec3{ 0, 0, -1 }, 0.5, r)) {
+        return Vec3{ 1.0, 0.0, 0.0 };
+    }
+
     const white = vec.one;
     const skyBlue = Vec3{ 0.5, 0.7, 1.0 };
 
