@@ -2,6 +2,8 @@ const std = @import("std");
 const Writer = std.io.Writer;
 
 pub const Vec3 = @Vector(3, f64);
+pub const zero = splat(0.0);
+pub const one = splat(1.0);
 
 pub fn x(v: Vec3) f64 {
     return v[0];
@@ -13,10 +15,12 @@ pub fn z(v: Vec3) f64 {
     return v[2];
 }
 
-pub const zero: Vec3 = @splat(0.0);
+pub fn splat(f: f64) Vec3 {
+    return @splat(f);
+}
 
 pub fn magnitude(v: Vec3) f64 {
-    return @sqrt(v.magnitude2());
+    return @sqrt(magnitude2(v));
 }
 
 pub fn magnitude2(v: Vec3) f64 {
@@ -36,10 +40,10 @@ pub fn cross(u: Vec3, v: Vec3) Vec3 {
 }
 
 pub fn unit(v: Vec3) Vec3 {
-    const mag = v.magnitude();
+    const mag = magnitude(v);
     if (mag == 0.0) return zero;
 
-    const mag3: Vec3 = @splat(mag);
+    const mag3 = splat(mag);
     return v / mag3;
 }
 
