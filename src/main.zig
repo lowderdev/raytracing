@@ -1,5 +1,6 @@
 const std = @import("std");
-const raytrace = @import("raytrace");
+const vec = @import("vec.zig");
+const Vec3 = vec.Vec3;
 
 pub fn main() !void {
     var wbuf: [4096]u8 = undefined;
@@ -25,11 +26,13 @@ pub fn main() !void {
             const fh: f32 = @floatFromInt(h);
             const fw: f32 = @floatFromInt(w);
 
-            const r = @trunc(255.999 * (fw / (image_width - 1.0)));
-            const g = @trunc(255.999 * (fh / (image_height - 1.0)));
-            const b = 0.0;
+            const pixel: Vec3 = .{
+                fw / (image_width - 1.0),
+                fh / (image_height - 1.0),
+                0.0,
+            };
 
-            try out.print("{d} {d} {d}\n", .{ r, g, b });
+            try out.print("{f}", .{vec.Color{ .data = pixel }});
         }
         std.Thread.sleep(10000);
     }
