@@ -5,16 +5,6 @@ pub const Vec3 = @Vector(3, f64);
 pub const zero = splat(0.0);
 pub const one = splat(1.0);
 
-pub fn x(v: Vec3) f64 {
-    return v[0];
-}
-pub fn y(v: Vec3) f64 {
-    return v[1];
-}
-pub fn z(v: Vec3) f64 {
-    return v[2];
-}
-
 pub fn splat(f: f64) Vec3 {
     return @splat(f);
 }

@@ -21,25 +21,34 @@ const viewportCenter = cameraCenter - Vec3{ 0, 0, focalLength };
 const viewportUpperLeft = viewportCenter - (viewportU / vec.splat(2)) - (viewportV / vec.splat(2));
 const pixel00Location = viewportUpperLeft + vec.splat(0.5) * (pixelDeltaU + pixelDeltaV);
 
-fn hitSphere(center: Vec3, radius: f32, ray: Ray) bool {
+fn hitSphere(center: Vec3, radius: f64, ray: Ray) f64 {
     const oc: Vec3 = center - ray.origin;
     const a = vec.dot(ray.direction, ray.direction);
     const b = -2.0 * vec.dot(ray.direction, oc);
     const c = vec.dot(oc, oc) - radius * radius;
     const discriminant = b * b - 4.0 * a * c;
+
+    if (discriminant < 0) {
+        return -1.0;
+    } else {
+        return (-b - @sqrt(discriminant)) / (2.0 * a);
+    }
+
     return discriminant >= 0.0;
 }
 
 fn ray_color(r: Ray) Vec3 {
-    if (hitSphere(Vec3{ 0, 0, -1 }, 0.5, r)) {
-        return Vec3{ 1.0, 0.0, 0.0 };
+    const t = hitSphere(Vec3{ 0, 0, -1 }, 0.5, r);
+    if (t > 0.0) {
+        const n: Vec3 = vec.unit(r.at(t) - Vec3{ 0, 0, -1 });
+        return vec.splat(0.5) * Vec3{ n[0] + 1, n[1] + 1, n[2] + 1 };
     }
 
     const white = vec.one;
     const skyBlue = Vec3{ 0.5, 0.7, 1.0 };
 
     const unitDirection = vec.unit(r.direction);
-    const a = 0.5 * (vec.y(unitDirection) + 1.0);
+    const a = 0.5 * (unitDirection[1] + 1.0);
     return vec.splat(1.0 - a) * white + vec.splat(a) * skyBlue;
 }
 
@@ -63,8 +72,8 @@ pub fn main() !void {
         progress.completeOne();
 
         for (0..imageWidth) |w| {
-            const fh: f32 = @floatFromInt(h);
-            const fw: f32 = @floatFromInt(w);
+            const fh: f64 = @floatFromInt(h);
+            const fw: f64 = @floatFromInt(w);
             const vh = vec.splat(fh);
             const vw = vec.splat(fw);
 
