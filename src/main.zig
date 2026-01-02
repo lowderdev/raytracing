@@ -23,15 +23,15 @@ const pixel00Location = viewportUpperLeft + vec.splat(0.5) * (pixelDeltaU + pixe
 
 fn hitSphere(center: Vec3, radius: f64, ray: Ray) f64 {
     const oc: Vec3 = center - ray.origin;
-    const a = vec.dot(ray.direction, ray.direction);
-    const b = -2.0 * vec.dot(ray.direction, oc);
-    const c = vec.dot(oc, oc) - radius * radius;
-    const discriminant = b * b - 4.0 * a * c;
+    const a = vec.magnitude2(ray.direction);
+    const h = vec.dot(ray.direction, oc);
+    const c = vec.magnitude2(oc) - radius * radius;
+    const discriminant = h * h - a * c;
 
     if (discriminant < 0) {
         return -1.0;
     } else {
-        return (-b - @sqrt(discriminant)) / (2.0 * a);
+        return (h - @sqrt(discriminant)) / a;
     }
 
     return discriminant >= 0.0;
