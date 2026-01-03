@@ -2,6 +2,8 @@ const std = @import("std");
 const vec = @import("vec.zig");
 const Vec3 = vec.Vec3;
 const Ray = @import("ray.zig").Ray;
+const Sphere = @import("objects.zig").Sphere;
+const Hit = @import("objects.zig").Hit;
 
 // Image
 const aspectRatio = 16.0 / 9.0;
@@ -37,12 +39,29 @@ fn hitSphere(center: Vec3, radius: f64, ray: Ray) f64 {
     return discriminant >= 0.0;
 }
 
-fn ray_color(r: Ray) Vec3 {
-    const t = hitSphere(Vec3{ 0, 0, -1 }, 0.5, r);
-    if (t > 0.0) {
-        const n: Vec3 = vec.unit(r.at(t) - Vec3{ 0, 0, -1 });
-        return vec.splat(0.5) * Vec3{ n[0] + 1, n[1] + 1, n[2] + 1 };
+fn ray_color(r: Ray, world: anytype) Vec3 {
+    // bool hit(const ray& r, double ray_tmin, double ray_tmax, hit_record& rec) const override {
+    //     hit_record temp_rec;
+    //     for (const auto& object : objects) {
+    //         if (object->hit(r, ray_tmin, closest_so_far, temp_rec)) {
+    //             hit_anything = true;
+    //             closest_so_far = temp_rec.t;
+    //             rec = temp_rec;
+    //         }
+    //     }
+    //     return hit_anything;
+    // }
+
+    if (hitEverything(world, r)) |hit| {
+        return vec.splat(0.5) * (hit.normal + vec.splat(1));
     }
+
+    // single sphere test
+    // const t = hitSphere(Vec3{ 0, 0, -1 }, 0.5, r);
+    // if (t > 0.0) {
+    //     const n: Vec3 = vec.unit(r.at(t) - Vec3{ 0, 0, -1 });
+    //     return vec.splat(0.5) * Vec3{ n[0] + 1, n[1] + 1, n[2] + 1 };
+    // }
 
     const white = vec.one;
     const skyBlue = Vec3{ 0.5, 0.7, 1.0 };
@@ -50,6 +69,20 @@ fn ray_color(r: Ray) Vec3 {
     const unitDirection = vec.unit(r.direction);
     const a = 0.5 * (unitDirection[1] + 1.0);
     return vec.splat(1.0 - a) * white + vec.splat(a) * skyBlue;
+}
+
+fn hitEverything(objects: anytype, ray: Ray) ?Hit {
+    var hit_record: ?Hit = null;
+    var closest_so_far = std.math.inf(f64);
+
+    inline for (objects) |obj| {
+        if (obj.hit(ray, 0.001, closest_so_far)) |h| {
+            closest_so_far = h.t;
+            hit_record = h;
+        }
+    }
+
+    return hit_record;
 }
 
 pub fn main() !void {
@@ -68,6 +101,11 @@ pub fn main() !void {
 
     try out.print("P3\n{} {}\n255\n", .{ imageWidth, imageHeight });
 
+    const world = .{
+        Sphere.init(Vec3{ 0, 0, -1 }, 0.5),
+        Sphere.init(Vec3{ 0, -100.5, -1 }, 100),
+    };
+
     for (0..imageHeight) |h| {
         progress.completeOne();
 
@@ -83,7 +121,7 @@ pub fn main() !void {
             const rayDirection = pixelCenter - cameraCenter;
             const r = Ray{ .origin = cameraCenter, .direction = rayDirection };
 
-            const pixel: Vec3 = ray_color(r);
+            const pixel: Vec3 = ray_color(r, world);
 
             try out.print("{f}", .{vec.Color{ .data = pixel }});
         }
