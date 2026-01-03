@@ -40,28 +40,9 @@ fn hitSphere(center: Vec3, radius: f64, ray: Ray) f64 {
 }
 
 fn ray_color(r: Ray, world: anytype) Vec3 {
-    // bool hit(const ray& r, double ray_tmin, double ray_tmax, hit_record& rec) const override {
-    //     hit_record temp_rec;
-    //     for (const auto& object : objects) {
-    //         if (object->hit(r, ray_tmin, closest_so_far, temp_rec)) {
-    //             hit_anything = true;
-    //             closest_so_far = temp_rec.t;
-    //             rec = temp_rec;
-    //         }
-    //     }
-    //     return hit_anything;
-    // }
-
     if (hitEverything(world, r)) |hit| {
         return vec.splat(0.5) * (hit.normal + vec.splat(1));
     }
-
-    // single sphere test
-    // const t = hitSphere(Vec3{ 0, 0, -1 }, 0.5, r);
-    // if (t > 0.0) {
-    //     const n: Vec3 = vec.unit(r.at(t) - Vec3{ 0, 0, -1 });
-    //     return vec.splat(0.5) * Vec3{ n[0] + 1, n[1] + 1, n[2] + 1 };
-    // }
 
     const white = vec.one;
     const skyBlue = Vec3{ 0.5, 0.7, 1.0 };
@@ -72,11 +53,12 @@ fn ray_color(r: Ray, world: anytype) Vec3 {
 }
 
 fn hitEverything(objects: anytype, ray: Ray) ?Hit {
+    const tMin = 0;
     var hit_record: ?Hit = null;
     var closest_so_far = std.math.inf(f64);
 
     inline for (objects) |obj| {
-        if (obj.hit(ray, 0.001, closest_so_far)) |h| {
+        if (obj.hit(ray, .{ .min = tMin, .max = closest_so_far })) |h| {
             closest_so_far = h.t;
             hit_record = h;
         }
