@@ -4,9 +4,14 @@ const Vec3 = vec.Vec3;
 const Ray = @import("ray.zig").Ray;
 const Hit = @import("objects.zig").Hit;
 
+var prng: std.Random.DefaultPrng = .init(0);
+const rand = prng.random();
+
 const cameraCenter = Vec3{ 0, 0, 0 };
 const focalLength = 1.0;
 const viewportHeight = 2.0;
+const samplesPerPixel = 100;
+const pixelSamplesScale = 1.0 / (samplesPerPixel + 0.0);
 
 pub const Camera = struct {
     imageWidth: u64,
@@ -43,20 +48,39 @@ pub const Camera = struct {
             for (0..c.imageWidth) |w| {
                 const fh: f64 = @floatFromInt(h);
                 const fw: f64 = @floatFromInt(w);
-                const vh = vec.splat(fh);
-                const vw = vec.splat(fw);
 
-                const pixelCenter = c.pixel00Location +
-                    (vw * c.pixelDeltaU) +
-                    (vh * c.pixelDeltaV);
-                const rayDirection = pixelCenter - cameraCenter;
-                const r = Ray{ .origin = cameraCenter, .direction = rayDirection };
+                var pixel_color = vec.splat(0.0);
+                for (0..samplesPerPixel) |_| {
+                    const ray: Ray = c.getRay(fw, fh);
+                    pixel_color += rayColor(ray, objects);
+                }
 
-                const pixel: Vec3 = rayColor(r, objects);
-
+                const pixel = vec.splat(pixelSamplesScale) * pixel_color;
                 try out.print("{f}", .{vec.Color{ .data = pixel }});
             }
         }
+    }
+
+    /// Construct a camera ray originating from the origin and directed at randomly
+    /// sampled point around the pixel location w, h.
+    fn getRay(c: Camera, w: f64, h: f64) Ray {
+        const offset = sampleSquare();
+        const wOffset = vec.splat(w + offset[0]);
+        const hOffset = vec.splat(h + offset[1]);
+        const pixelSample = c.pixel00Location + (wOffset * c.pixelDeltaU) + (hOffset * c.pixelDeltaV);
+
+        const rayOrigin = cameraCenter;
+        const rayDirection = pixelSample - rayOrigin;
+
+        return .{ .origin = rayOrigin, .direction = rayDirection };
+    }
+
+    /// Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+    fn sampleSquare() Vec3 {
+        const x = std.Random.float(rand, f64);
+        const y = std.Random.float(rand, f64);
+
+        return .{ x - 0.5, y - 0.5, 0 };
     }
 
     fn rayColor(ray: Ray, objects: anytype) Vec3 {

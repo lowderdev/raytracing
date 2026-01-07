@@ -1,5 +1,6 @@
 const std = @import("std");
 const Writer = std.io.Writer;
+const Interval = @import("interval.zig").Interval;
 
 pub const Vec3 = @Vector(3, f64);
 pub const zero = splat(0.0);
@@ -45,8 +46,10 @@ pub fn unit(v: Vec3) Vec3 {
 
 pub const Color = std.fmt.Alt(Vec3, colorFormat);
 fn colorFormat(v: Vec3, writer: *Writer) !void {
-    const r: u8 = @intFromFloat(v[0] * 255.999);
-    const g: u8 = @intFromFloat(v[1] * 255.999);
-    const b: u8 = @intFromFloat(v[2] * 255.999);
+    const intensity = Interval{ .min = 0.000, .max = 0.999 };
+    const r: u8 = @intFromFloat(256 * intensity.clamp(v[0]));
+    const g: u8 = @intFromFloat(256 * intensity.clamp(v[1]));
+    const b: u8 = @intFromFloat(256 * intensity.clamp(v[2]));
+
     try writer.print("{d} {d} {d}\n", .{ r, g, b });
 }

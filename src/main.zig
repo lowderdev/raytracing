@@ -21,7 +21,7 @@ pub fn main() !void {
     const progress = std.Progress.start(.{
         .draw_buffer = &pbuf,
         .root_name = "Generating Image",
-        .estimated_total_items = imageWidth * imageHeight,
+        .estimated_total_items = imageWidth,
     });
     defer progress.end();
 
