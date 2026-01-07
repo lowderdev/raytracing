@@ -8,7 +8,7 @@ const Camera = @import("camera.zig").Camera;
 
 // Image
 const aspectRatio = 16.0 / 9.0;
-const imageWidth = 800;
+const imageWidth = 4000;
 const imageHeight = @divTrunc(imageWidth, aspectRatio);
 
 pub fn main() !void {
@@ -25,15 +25,15 @@ pub fn main() !void {
     });
     defer progress.end();
 
-    try out.print("P3\n{} {}\n255\n", .{ imageWidth, imageHeight });
+    try out.print("P6\n{d} {d}\n255\n", .{ imageWidth, imageHeight });
 
-    const objects = .{
+    const world = .{
         Sphere.init(Vec3{ 0, 0, -1 }, 0.5),
         Sphere.init(Vec3{ 0, -100.5, -1 }, 100),
     };
 
     const camera = Camera.init(imageWidth, imageHeight);
-    try camera.render(out, objects, progress);
+    try camera.render(out, world, progress);
 
     try out.flush();
 }

@@ -3,6 +3,7 @@ const vec = @import("vec.zig");
 const Vec3 = vec.Vec3;
 const Ray = @import("ray.zig").Ray;
 const Hit = @import("objects.zig").Hit;
+const Interval = @import("interval.zig").Interval;
 
 var prng: std.Random.DefaultPrng = .init(0);
 const rand = prng.random();
@@ -10,7 +11,7 @@ const rand = prng.random();
 const cameraCenter = Vec3{ 0, 0, 0 };
 const focalLength = 1.0;
 const viewportHeight = 2.0;
-const samplesPerPixel = 100;
+const samplesPerPixel = 20;
 const pixelSamplesScale = 1.0 / (samplesPerPixel + 0.0);
 
 pub const Camera = struct {
@@ -41,23 +42,48 @@ pub const Camera = struct {
         };
     }
 
-    pub fn render(c: Camera, out: *std.Io.Writer, objects: anytype, progress: std.Progress.Node) !void {
+    pub fn render(c: Camera, out: *std.Io.Writer, world: anytype, progress: std.Progress.Node) !void {
+        const gpa = std.heap.smp_allocator;
+        var out_buf: [][3]u8 = try gpa.alloc([3]u8, c.imageWidth * c.imageHeight);
+        var pool: std.Thread.Pool = undefined;
+        try pool.init(.{ .allocator = gpa });
+
+        var wg: std.Thread.WaitGroup = .{};
+
         for (0..c.imageHeight) |h| {
-            progress.completeOne();
+            pool.spawnWg(&wg, computeRow, .{
+                c,
+                h,
+                world,
+                out_buf[h * c.imageWidth ..][0..c.imageWidth],
+                progress,
+            });
+        }
 
-            for (0..c.imageWidth) |w| {
-                const fh: f64 = @floatFromInt(h);
-                const fw: f64 = @floatFromInt(w);
+        pool.waitAndWork(&wg);
 
-                var pixel_color = vec.splat(0.0);
-                for (0..samplesPerPixel) |_| {
-                    const ray: Ray = c.getRay(fw, fh);
-                    pixel_color += rayColor(ray, objects);
-                }
+        try out.writeSliceEndian(u8, std.mem.sliceAsBytes(out_buf), .little);
+    }
 
-                const pixel = vec.splat(pixelSamplesScale) * pixel_color;
-                try out.print("{f}", .{vec.Color{ .data = pixel }});
+    fn computeRow(c: Camera, h: u64, world: anytype, out: [][3]u8, progress: std.Progress.Node) void {
+        defer progress.completeOne();
+
+        for (0..c.imageWidth) |w| {
+            const fh: f64 = @floatFromInt(h);
+            const fw: f64 = @floatFromInt(w);
+
+            var pixel_color = vec.splat(0.0);
+            for (0..samplesPerPixel) |_| {
+                const ray: Ray = c.getRay(fw, fh);
+                pixel_color += rayColor(ray, world);
             }
+
+            const pixel = vec.splat(pixelSamplesScale) * pixel_color;
+            const intensity = Interval{ .min = 0.000, .max = 0.999 };
+            const r: u8 = @intFromFloat(256 * intensity.clamp(pixel[0]));
+            const g: u8 = @intFromFloat(256 * intensity.clamp(pixel[1]));
+            const b: u8 = @intFromFloat(256 * intensity.clamp(pixel[2]));
+            out[w] = .{ r, g, b };
         }
     }
 
@@ -75,7 +101,7 @@ pub const Camera = struct {
         return .{ .origin = rayOrigin, .direction = rayDirection };
     }
 
-    /// Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+    /// Returns the vector to a random point in the [-.5, -.5]-[+.5, +.5] unit square.
     fn sampleSquare() Vec3 {
         const x = std.Random.float(rand, f64);
         const y = std.Random.float(rand, f64);
@@ -83,8 +109,8 @@ pub const Camera = struct {
         return .{ x - 0.5, y - 0.5, 0 };
     }
 
-    fn rayColor(ray: Ray, objects: anytype) Vec3 {
-        if (hitEverything(ray, objects)) |hit| {
+    fn rayColor(ray: Ray, world: anytype) Vec3 {
+        if (hitEverything(ray, world)) |hit| {
             return vec.splat(0.5) * (hit.normal + vec.splat(1));
         }
 
@@ -96,12 +122,12 @@ pub const Camera = struct {
         return vec.splat(1.0 - a) * white + vec.splat(a) * skyBlue;
     }
 
-    fn hitEverything(ray: Ray, objects: anytype) ?Hit {
+    fn hitEverything(ray: Ray, world: anytype) ?Hit {
         const tMin = 0;
         var hit: ?Hit = null;
         var closest_so_far = std.math.inf(f64);
 
-        inline for (objects) |obj| {
+        inline for (world) |obj| {
             const new_hit = obj.hit(ray, .{ .min = tMin, .max = closest_so_far });
             if (new_hit) |h| {
                 closest_so_far = h.t;

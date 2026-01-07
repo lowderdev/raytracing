@@ -13,7 +13,7 @@ pub const Hit = struct {
 
     pub fn init(t: f64, ray: Ray, point: Vec3, outwardNormal: Vec3) Hit {
         if (builtin.mode == .Debug) {
-            // NOTE: the parameter `outward_normal` is assumed to have unit length.
+            // NOTE: the parameter `outwardNormal` is assumed to have unit length.
             const one = vec.magnitude2(outwardNormal);
             std.debug.assert(std.math.approxEqAbs(f64, one, 1, 0.001));
         }
