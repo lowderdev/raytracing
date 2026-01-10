@@ -10,6 +10,7 @@ const focalLength = 1.0;
 const viewportHeight = 2.0;
 const samplesPerPixel = 20;
 const pixelSamplesScale = 1.0 / (samplesPerPixel + 0.0);
+const maxRecursionDepth = 50;
 
 pub const Camera = struct {
     imageWidth: u64,
@@ -73,7 +74,7 @@ pub const Camera = struct {
             var pixel_color = vec.splat(0.0);
             for (0..samplesPerPixel) |_| {
                 const ray: Ray = c.getRay(fw, fh, rand);
-                pixel_color += rayColor(ray, world);
+                pixel_color += rayColor(rand, maxRecursionDepth, ray, world);
             }
 
             const pixel = vec.splat(pixelSamplesScale) * pixel_color;
@@ -107,9 +108,17 @@ pub const Camera = struct {
         return .{ x - 0.5, y - 0.5, 0 };
     }
 
-    fn rayColor(ray: Ray, world: anytype) Vec3 {
+    fn rayColor(rand: std.Random, depth: u32, ray: Ray, world: anytype) Vec3 {
+        // if max depth exceeded, return black
+        if (depth <= 0) return vec.zero;
+
         if (hitEverything(ray, world)) |hit| {
-            return vec.splat(0.5) * (hit.normal + vec.splat(1));
+            // // Simple normal-based coloring
+            // return vec.splat(0.5) * (hit.normal + vec.splat(1));
+
+            const direction = vec.randomOnHemisphere(rand, hit.normal);
+            const scattered = Ray{ .origin = hit.point, .direction = direction };
+            return vec.splat(0.5) * rayColor(rand, depth - 1, scattered, world);
         }
 
         const white = vec.one;
@@ -121,7 +130,7 @@ pub const Camera = struct {
     }
 
     fn hitEverything(ray: Ray, world: anytype) ?Hit {
-        const tMin = 0;
+        const tMin = 0.001;
         var hit: ?Hit = null;
         var closest_so_far = std.math.inf(f64);
 

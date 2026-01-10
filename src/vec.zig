@@ -55,3 +55,24 @@ pub fn randomRange(r: std.Random, min: f64, max: f64) Vec3 {
         r.float(f64) * (max - min) + min,
     };
 }
+
+pub fn randomUnitVector(rand: std.Random) Vec3 {
+    while (true) {
+        const p = randomRange(rand, -1.0, 1.0);
+        const mag2 = magnitude2(p);
+        if (1e-160 < mag2 and mag2 <= 1) {
+            return p / splat(@sqrt(mag2));
+        }
+    }
+}
+
+pub fn randomOnHemisphere(rand: std.Random, normal: Vec3) Vec3 {
+    const onUnitSphere = randomUnitVector(rand);
+    // Return the vector if it's in the same hemisphere as the normal,
+    // else invert it.
+    if (dot(onUnitSphere, normal) > 0.0) {
+        return onUnitSphere;
+    } else {
+        return -onUnitSphere;
+    }
+}

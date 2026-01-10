@@ -8,7 +8,7 @@ const Camera = @import("camera.zig").Camera;
 
 // Image
 const aspectRatio = 16.0 / 9.0;
-const imageWidth = 2000;
+const imageWidth = 1000;
 const imageHeight = @divTrunc(imageWidth, aspectRatio);
 
 // RNG
