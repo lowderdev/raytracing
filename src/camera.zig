@@ -78,10 +78,13 @@ pub const Camera = struct {
             }
 
             const pixel = vec.splat(pixelSamplesScale) * pixel_color;
+            const rg = linearToGamma(pixel[0]);
+            const gg = linearToGamma(pixel[1]);
+            const bg = linearToGamma(pixel[2]);
             const intensity = Interval{ .min = 0.000, .max = 0.999 };
-            const r: u8 = @intFromFloat(256 * intensity.clamp(pixel[0]));
-            const g: u8 = @intFromFloat(256 * intensity.clamp(pixel[1]));
-            const b: u8 = @intFromFloat(256 * intensity.clamp(pixel[2]));
+            const r: u8 = @intFromFloat(256 * intensity.clamp(rg));
+            const g: u8 = @intFromFloat(256 * intensity.clamp(gg));
+            const b: u8 = @intFromFloat(256 * intensity.clamp(bg));
             out[w] = .{ r, g, b };
         }
     }
@@ -116,7 +119,12 @@ pub const Camera = struct {
             // // Simple normal-based coloring
             // return vec.splat(0.5) * (hit.normal + vec.splat(1));
 
-            const direction = vec.randomOnHemisphere(rand, hit.normal);
+            // Diffuse scattering
+            // const direction = vec.randomOnHemisphere(rand, hit.normal);
+
+            // Lambertian scattering,
+            const direction = hit.normal + vec.randomUnitVector(rand);
+
             const scattered = Ray{ .origin = hit.point, .direction = direction };
             return vec.splat(0.5) * rayColor(rand, depth - 1, scattered, world);
         }
@@ -143,5 +151,11 @@ pub const Camera = struct {
         }
 
         return hit;
+    }
+
+    fn linearToGamma(linearComponent: f64) f64 {
+        if (linearComponent <= 0.0) return 0.0;
+
+        return @sqrt(linearComponent);
     }
 };
