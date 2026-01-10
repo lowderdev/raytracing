@@ -38,18 +38,20 @@ pub fn unit(v: Vec3) Vec3 {
     return v / mag3;
 }
 
-// is this needed?
-// pub const Fmt = std.fmt.Alt(Vec3, format);
-// fn format(v: Vec3, writer: *Writer) !void {
-//     try writer.print("{}, {}, {}", .{ v[0], v[1], v[2] });
-// }
+pub fn random(r: std.Random) Vec3 {
+    return Vec3{
+        r.float(f64),
+        r.float(f64),
+        r.float(f64),
+    };
+}
 
-pub const Color = std.fmt.Alt(Vec3, colorFormat);
-fn colorFormat(v: Vec3, writer: *Writer) !void {
-    const intensity = Interval{ .min = 0.000, .max = 0.999 };
-    const r: u8 = @intFromFloat(256 * intensity.clamp(v[0]));
-    const g: u8 = @intFromFloat(256 * intensity.clamp(v[1]));
-    const b: u8 = @intFromFloat(256 * intensity.clamp(v[2]));
+pub fn randomRange(r: std.Random, min: f64, max: f64) Vec3 {
+    std.debug.assert(max >= min);
 
-    try writer.print("{d} {d} {d}\n", .{ r, g, b });
+    return .{
+        r.float(f64) * (max - min) + min,
+        r.float(f64) * (max - min) + min,
+        r.float(f64) * (max - min) + min,
+    };
 }

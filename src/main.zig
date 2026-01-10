@@ -8,8 +8,13 @@ const Camera = @import("camera.zig").Camera;
 
 // Image
 const aspectRatio = 16.0 / 9.0;
-const imageWidth = 4000;
+const imageWidth = 2000;
 const imageHeight = @divTrunc(imageWidth, aspectRatio);
+
+// RNG
+const seed = 0;
+var prng: std.Random.DefaultPrng = .init(seed);
+const rand = prng.random();
 
 pub fn main() !void {
     var wbuf: [4096]u8 = undefined;
@@ -33,7 +38,7 @@ pub fn main() !void {
     };
 
     const camera = Camera.init(imageWidth, imageHeight);
-    try camera.render(out, world, progress);
+    try camera.render(out, world, rand, progress);
 
     try out.flush();
 }

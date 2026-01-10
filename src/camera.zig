@@ -5,9 +5,6 @@ const Ray = @import("ray.zig").Ray;
 const Hit = @import("objects.zig").Hit;
 const Interval = @import("interval.zig").Interval;
 
-var prng: std.Random.DefaultPrng = .init(0);
-const rand = prng.random();
-
 const cameraCenter = Vec3{ 0, 0, 0 };
 const focalLength = 1.0;
 const viewportHeight = 2.0;
@@ -42,7 +39,7 @@ pub const Camera = struct {
         };
     }
 
-    pub fn render(c: Camera, out: *std.Io.Writer, world: anytype, progress: std.Progress.Node) !void {
+    pub fn render(c: Camera, out: *std.Io.Writer, world: anytype, rand: std.Random, progress: std.Progress.Node) !void {
         const gpa = std.heap.smp_allocator;
         var out_buf: [][3]u8 = try gpa.alloc([3]u8, c.imageWidth * c.imageHeight);
         var pool: std.Thread.Pool = undefined;
@@ -56,6 +53,7 @@ pub const Camera = struct {
                 h,
                 world,
                 out_buf[h * c.imageWidth ..][0..c.imageWidth],
+                rand,
                 progress,
             });
         }
@@ -65,7 +63,7 @@ pub const Camera = struct {
         try out.writeSliceEndian(u8, std.mem.sliceAsBytes(out_buf), .little);
     }
 
-    fn computeRow(c: Camera, h: u64, world: anytype, out: [][3]u8, progress: std.Progress.Node) void {
+    fn computeRow(c: Camera, h: u64, world: anytype, out: [][3]u8, rand: std.Random, progress: std.Progress.Node) void {
         defer progress.completeOne();
 
         for (0..c.imageWidth) |w| {
@@ -74,7 +72,7 @@ pub const Camera = struct {
 
             var pixel_color = vec.splat(0.0);
             for (0..samplesPerPixel) |_| {
-                const ray: Ray = c.getRay(fw, fh);
+                const ray: Ray = c.getRay(fw, fh, rand);
                 pixel_color += rayColor(ray, world);
             }
 
@@ -89,8 +87,8 @@ pub const Camera = struct {
 
     /// Construct a camera ray originating from the origin and directed at randomly
     /// sampled point around the pixel location w, h.
-    fn getRay(c: Camera, w: f64, h: f64) Ray {
-        const offset = sampleSquare();
+    fn getRay(c: Camera, w: f64, h: f64, rand: std.Random) Ray {
+        const offset = sampleSquare(rand);
         const wOffset = vec.splat(w + offset[0]);
         const hOffset = vec.splat(h + offset[1]);
         const pixelSample = c.pixel00Location + (wOffset * c.pixelDeltaU) + (hOffset * c.pixelDeltaV);
@@ -102,7 +100,7 @@ pub const Camera = struct {
     }
 
     /// Returns the vector to a random point in the [-.5, -.5]-[+.5, +.5] unit square.
-    fn sampleSquare() Vec3 {
+    fn sampleSquare(rand: std.Random) Vec3 {
         const x = std.Random.float(rand, f64);
         const y = std.Random.float(rand, f64);
 
